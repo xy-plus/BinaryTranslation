@@ -1,6 +1,18 @@
-# 二进制翻译（android arm64 to x86_64）进展
+# 二进制翻译进展
 
 [TOC]
+
+## 2022-10-04
+
+续写 2022-09-28 的 `编译 Android 12` 。
+
+原计划：android arm64 to x86_64
+
+修改计划：arm64 to x86_64
+
+因为安卓实在太大了，下载编译都需要巨久。而且因为安卓后端本身也是 linux ，所以就先尝试直接在 x86 机器上运行 arm 程序。
+
+计划先看看 qemu user mode ，周末写出一版初步的分析结果。
 
 ## 2022-09-28
 
@@ -33,12 +45,14 @@ sudo apt remove python2.7 --auto-remove # https://blog.csdn.net/weixin_43270713/
 sudo apt remove python3.6 --auto-remove
 sudo ln -s /usr/bin/python3.8 /usr/bin/python
 
+mkdir ../android-7.1.0_r3
+cd ../android-7.1.0_r3
 repo init -u git://mirrors.ustc.edu.cn/aosp/platform/manifest -b android-7.1.0_r3
-repo sync -j4 --current-branch --no-tags
+repo sync -j4 --current-branch --no-tags    # 要下载巨久，顺手记录一个查看网速的命令：nload -u M -m eth0
 # 原本打算使用 android-12.0.0_r3 ，因为需要 200g 的磁盘空间，我电脑不够大，所以改成 android-7.1.0_r3
 # 如果网络遇到问题的话上 tuna 看看
-
-# TODO
+# android-7.1.0_r3 有大约 30g ，把 c 盘撑爆了。。。
+# 删除 wsl ，重新安装 wsl 到 d 盘：https://zhuanlan.zhihu.com/p/419242528
 ```
 
 ### 计划
