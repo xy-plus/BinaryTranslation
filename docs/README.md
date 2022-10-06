@@ -30,7 +30,7 @@ QEMU 既可实现全系统硬件虚拟化，也可在 User Mode 下通过为每�
 
 TCG 的作用就是翻译模拟的处理器指令流(被模拟处理器)，然后通过 TCG 后端转换为主机指令流（执行 QEMU 的处理器）。
 
-![](./pic/qemu-translate-process.webp)
+![](../pic/qemu-translate-process.webp)
 
 TCG 定义了一系列 IR (Intermediate Representation)，将已经翻译的代码块放在转换缓存中，并通过跳转指令将源处理器的指令集和目标处理器的指令集链接在一起。当 Hypervisor 执行代码时，存放于转换缓存中的链接指令可以跳转到指定的代码块，目标二进制代码可不断调用已翻译代码块来运行，直到需要翻译新块为止。在执行的过程中，如果遇到了需要翻译的代码块，执行会暂停并跳回到 Hypervisor，Hypervisor 使用和协调 TCG 对需要进行二进制翻译的源处理器指令集进行转换和翻译并存储到转换缓存中。
 
