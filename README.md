@@ -2,6 +2,118 @@
 
 [TOC]
 
+## 2022-10-13
+
+https://github.com/ria-jit/ria-jit
+
+https://www.researchgate.net/publication/345180829_Dynamic_Binary_Translation_for_RISC-V_code_on_x86-64
+
+搜到一个 riscv 到 x84 的 dynamic binary translation ，c 写的，会比 qemu 简单很多。计划参考该项目，用 rust 写一个 arm to x86 的。
+
+## 2022-10-12
+
+继续分析 qemu 源码。
+
+[qemu tcg 源码分析](./src/tcg.md)
+
+## 2022-10-11
+
+继续分析 qemu 源码。
+
+[qemu 源码分析](./src/qemu.md)
+
+## 2022-10-10
+
+阅读 qemu 源码与二进制翻译相关的部分。
+
+### qemu 部分文件功能
+
+- softmmu/vl.c：最主要的模拟循环，虚拟机环境初始化和 CPU 的执行。
+- target/{GUEST_ARCH}/translate.c：将 guest 代码翻译成不同架构的 TCG 操作码。
+- tcg/tcg.c：主要的 TCG 代码。
+- tcg/{HOST_ARCH}/tcg-target.c：将 TCG 代码转化生成主机代码。
+- cpu-exec.c：主要寻找下一个二进制翻译代码块，如果没有找到就请求得到下一个代码块，并且操作生成的代码块。
+
+### 查看 qemu user mode 的二进制翻译效果
+
+```bash
+> sudo apt-get install qemu-user gcc-aarch64-linux-gnu -y
+> cd src
+> aarch64-linux-gnu-as -o aarch64_main.o aarch64_main.S
+> aarch64-linux-gnu-ld -o aarch64_main.out aarch64_main.o
+> qemu-aarch64 aarch64_main.out
+hello world
+> qemu-aarch64 -d in_asm,out_asm aarch64_main.out
+PROLOGUE: [size=42]
+0x55db2825a000:  push   %rbp
+0x55db2825a001:  push   %rbx
+0x55db2825a002:  push   %r12
+0x55db2825a004:  push   %r13
+0x55db2825a006:  push   %r14
+0x55db2825a008:  push   %r15
+0x55db2825a00a:  mov    %rdi,%r14
+0x55db2825a00d:  add    $0xfffffffffffffb78,%rsp
+0x55db2825a014:  jmpq   *%rsi
+0x55db2825a016:  xor    %eax,%eax
+0x55db2825a018:  add    $0x488,%rsp
+0x55db2825a01f:  pop    %r15
+0x55db2825a021:  pop    %r14
+0x55db2825a023:  pop    %r13
+0x55db2825a025:  pop    %r12
+0x55db2825a027:  pop    %rbx
+0x55db2825a028:  pop    %rbp
+0x55db2825a029:  retq
+
+----------------
+IN:
+0x0000000000400078:  d2800020      mov x0, #0x1
+0x000000000040007c:  100000e1      adr x1, #+0x1c (addr 0x400098)
+0x0000000000400080:  58000142      ldr x2, pc+40 (addr 0x4000a8)
+0x0000000000400084:  d2800808      mov x8, #0x40
+0x0000000000400088:  d4000001      svc #0x0
+
+OUT: [size=98]
+0x55db2825a100:  mov    -0x14(%r14),%ebp
+0x55db2825a104:  test   %ebp,%ebp
+0x55db2825a106:  jl     0x55db2825a156
+0x55db2825a10c:  movq   $0x1,0x40(%r14)
+0x55db2825a114:  movq   $0x400098,0x48(%r14)
+0x55db2825a11c:  mov    $0x4000a8,%ebp
+0x55db2825a121:  mov    0x0(%rbp),%rbp
+0x55db2825a125:  mov    %rbp,0x50(%r14)
+0x55db2825a129:  movq   $0x40,0x80(%r14)
+0x55db2825a134:  movq   $0x40008c,0x140(%r14)
+0x55db2825a13f:  mov    %r14,%rdi
+0x55db2825a142:  mov    $0x2,%esi
+0x55db2825a147:  mov    $0x56000000,%edx
+0x55db2825a14c:  mov    $0x1,%ecx
+0x55db2825a151:  callq  0x55db27ee57b0
+0x55db2825a156:  lea    -0x11a(%rip),%rax        # 0x55db2825a043
+0x55db2825a15d:  jmpq   0x55db2825a018
+
+hello world
+----------------
+IN:
+0x000000000040008c:  d2800000      mov x0, #0x0
+0x0000000000400090:  d2800ba8      mov x8, #0x5d
+0x0000000000400094:  d4000001      svc #0x0
+
+OUT: [size=77]
+0x55db2825a240:  mov    -0x14(%r14),%ebp
+0x55db2825a244:  test   %ebp,%ebp
+0x55db2825a246:  jl     0x55db2825a281
+0x55db2825a24c:  movq   $0x0,0x40(%r14)
+0x55db2825a254:  movq   $0x5d,0x80(%r14)
+0x55db2825a25f:  movq   $0x400098,0x140(%r14)
+0x55db2825a26a:  mov    %r14,%rdi
+0x55db2825a26d:  mov    $0x2,%esi
+0x55db2825a272:  mov    $0x56000000,%edx
+0x55db2825a277:  mov    $0x1,%ecx
+0x55db2825a27c:  callq  0x55db27ee57b0
+0x55db2825a281:  lea    -0x105(%rip),%rax        # 0x55db2825a183
+0x55db2825a288:  jmpq   0x55db2825a018
+```
+
 ## 2022-10-05
 
 ### qemu-user-mode 介绍
