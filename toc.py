@@ -1,6 +1,6 @@
 import os
 
-os.makedirs("docs/src")
+os.makedirs("docs/src",exist_ok=True)
 res = os.popen("cat ./README.md | ./gh-md-toc -")
 toc = res.read().strip()
 fin = open("README.md")
