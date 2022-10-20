@@ -1,6 +1,9 @@
 # 二进制翻译进展
 
 * [二进制翻译进展](#二进制翻译进展)
+   * [2022-10-19](#2022-10-19)
+   * [2022-10-18](#2022-10-18)
+   * [2022-10-17](#2022-10-17)
    * [2022-10-13](#2022-10-13)
    * [2022-10-12](#2022-10-12)
    * [2022-10-11](#2022-10-11)
@@ -21,6 +24,74 @@
    * [2022-09-27](#2022-09-27)
       * [BT 入门](#bt-入门)
       * [BT 参考项目](#bt-参考项目)
+
+## 2022-10-19
+
+计划目标：参考 ria-jit（c 语言），使用 rust 编写一个 riscv(or arm) to x86 的翻译器。
+
+发现该项目使用的 riscv gcc 是 2020-09-25 之前的某个版本，如果使用当时的版本，可能会没有 rvc 的问题。但是 2021.01.26 版本之前的 release 是 2020 年的了，感觉太久远了，所以就算找 commit ，也得下载一堆东西自行编译。
+
+- 安装 riscv-gcc
+
+```sh
+git clone https://github.com/riscv/riscv-gnu-toolchain --recursive
+cd riscv-gnu-toolchain
+./configure --with-arch=rv64g --disable-multilib
+sudo make linux
+```
+
+- 运行 ria-jit
+
+```sh
+> mkdir build && cd build && cmake .. && make
+> vim hello.c
+> riscv64-unknown-linux-gnu-gcc hello.c -static -march=rv64imafd -mabi=lp64d
+> ./translator -f a.out
+hello world
+```
+
+## 2022-10-18
+
+尝试运行 ria-jit 项目。该项目只支持 [RISC-V toolchain gcc](https://github.com/riscv/riscv-gnu-toolchain) 使用 `-static -march=rv64imafd -mabi=lp64d` 编译的程序。
+
+由于这是一个 2021 年初的项目，我直接下载 riscv-gnu-toolchain(tag: 2021.01.16) release 的预编译版本。编译后的程序无法通过 ria-jit 运行。
+
+检查错误原因，发现是 ria-jit 不支持 RVC（RISC-V compressed instructions）。
+
+通过 readelf 检查编译出来的 binary ，确实是 RVC 的。
+
+stack overflow answer：Recompile the riscv-gnu-tool with option --with-arch=rv64g --disable-multilib
+
+git clone 就要好多个 G ，特别久，花了点时间。
+
+## 2022-10-17
+
+找到项目：https://github.com/merryhime/dynarmic
+
+该项目的作用是：用户自行将 arm64 指令拷贝到指定的内存区域中，然后可以通过 dynarmic 在 x64 环境执行。
+
+主要通过 src/dynarmic/interface 与 cpu 交互。
+
+使用 jit 的成员函数设置 cpu 状态。
+
+调用 Jit::Execute 以启动 CPU 执行。
+
+dynarmic 通过调用从内存中读取指令 UserCallbacks::MemoryReadCode 。这些指令然后经过几个阶段：
+
+1. 解码（识别指令的类型并将其分解为字段）
+2. 翻译（从指令生成高级 IR）
+3. 优化（消除冗余微指令，其他速度改进）
+4. 发射（将主机可执行代码生成到内存中）
+5. 执行（主机 CPU 跳转到发出代码的开头并运行它）
+
+- 解码：src/frontend/A32/decoder/{arm.h,thumb16.h,thumb32.h}。
+- 翻译：src/dynarmic/frontend/A32/translate/translate\_{arm,thumb}.cpp。函数 Translate 获取一个起始内存位置、一些 CPU 状态和内存读取器回调，并返回一个基本的 IR 块。
+- IR：src/frontend/ir
+- 优化：src/ir_opt
+- 发射：src/dynarmic/backend/x64/emit_x64.{h,cpp}
+- 执行：src/dynarmic/backend/x64/block_of_code.{h,cpp}，BlockOfCode::RunCode
+
+可以看出这个流程和 qemu 的相关部分差不多，或许可以在这个 base 下工作，因为这个功能更精简。
 
 ## 2022-10-13
 
